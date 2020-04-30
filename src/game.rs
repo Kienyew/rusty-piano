@@ -74,7 +74,7 @@ impl Game {
             };
 
             if *key_state == KeyState::JustPressed {
-                self.keypress(key);
+                self.key_press(key);
             }
         }
 
@@ -83,7 +83,7 @@ impl Game {
         }
     }
 
-    pub fn keypress(&mut self, key: Key) {
+    pub fn key_press(&mut self, key: Key) {
         for (i, keybind) in self.settings.keybinds.clone().into_iter().enumerate() {
             if key == keybind {
                 self.press_touch_block(i);
