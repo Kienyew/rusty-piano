@@ -16,14 +16,17 @@ pub struct GameSettings {
     pub line_width: f64,
     pub line_height: f64,
     pub margin_bottom: f64,
-    pub background_color: Color,
-    pub touch_block_color: Color,
-    pub music_node_color: Color,
     pub line_count: usize,
     pub drop_speed: f64,
     pub touch_block_height: f64,
     pub music_node_height: f64,
+    pub line_sideline_radius: f64,
     pub keybinds: Vec<Key>,
+    pub line_background_color: Color,
+    pub background_color: Color,
+    pub touch_block_color: Color,
+    pub music_node_color: Color,
+    pub line_sideline_color: Color,
 }
 
 impl GameSettings {
