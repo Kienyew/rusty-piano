@@ -1,11 +1,11 @@
-use std::collections::HashMap;
 use ordered_float::OrderedFloat;
-use piston_window::{Button, Context, GenericEvent, Graphics, Key, UpdateArgs};
 use piston_window::types::Color;
-use rand::seq::SliceRandom;
+use piston_window::{Button, Context, GenericEvent, Graphics, Key, UpdateArgs};
 use rand;
+use rand::seq::SliceRandom;
 
-use crate::game_object::{PianoLine};
+use crate::game_object::PianoLine;
+use crate::keyboard::{KeyEventType, KeyboardControl};
 use crate::view::GameView;
 
 #[derive(Clone)]
@@ -16,11 +16,11 @@ pub struct GameSettings {
     pub line_width: f64,
     pub line_height: f64,
     pub margin_bottom: f64,
-    pub line_count: usize,
     pub drop_speed: f64,
     pub touch_block_height: f64,
     pub music_node_height: f64,
     pub line_sideline_radius: f64,
+    pub line_count: usize,
     pub keybinds: Vec<Key>,
     pub line_background_color: Color,
     pub background_color: Color,
@@ -36,7 +36,7 @@ impl GameSettings {
         let piano_lines = vec![PianoLine::new(&self); self.line_count];
 
         Game {
-            key_states: HashMap::new(),
+            keyboard_control: KeyboardControl::new(),
             view: GameView::new(self.clone()),
             settings: self,
             piano_lines,
@@ -44,15 +44,8 @@ impl GameSettings {
     }
 }
 
-#[derive(PartialEq)]
-pub enum KeyState {
-    Neutral,
-    JustPressed,
-    Holding,
-}
-
 pub struct Game {
-    pub key_states: HashMap<Key, KeyState>,
+    pub keyboard_control: KeyboardControl,
     pub settings: GameSettings,
     pub piano_lines: Vec<PianoLine>,
     view: GameView,
@@ -60,7 +53,7 @@ pub struct Game {
 
 impl Game {
     pub fn exit(&mut self) {
-        println!("Good bye (o´ω`o) Have a nice day ( •̀ω•́ )" )
+        println!("Good bye (o´ω`o) Have a nice day ( •̀ω•́ )")
     }
 
     pub fn event<E: GenericEvent>(&mut self, e: &E) {
@@ -69,46 +62,21 @@ impl Game {
         }
 
         if let Some(Button::Keyboard(key)) = e.press_args() {
-            let key_state = self.key_states.entry(key).or_insert(KeyState::Neutral);
-            *key_state = match *key_state {
-                KeyState::Neutral => KeyState::JustPressed,
-                KeyState::JustPressed => KeyState::Holding,
-                KeyState::Holding => KeyState::Holding,
-            };
-
-            if *key_state == KeyState::JustPressed {
-                self.key_press(key);
-            }
+            self.keyboard_control.key_press_event(key);
         }
 
         if let Some(Button::Keyboard(key)) = e.release_args() {
-            self.key_states.insert(key, KeyState::Neutral);
+            self.keyboard_control.key_release_event(key);
         }
-    }
 
-    pub fn key_press(&mut self, key: Key) {
-        for (i, keybind) in self.settings.keybinds.clone().into_iter().enumerate() {
-            if key == keybind {
-                self.press_touch_block(i);
-            }
-        }
-    }
-
-    pub fn press_touch_block(&mut self, line: usize) {
-        use crate::math::line_intersect_length;
-        use std::cmp::min;
-
-        if let Some(piano_line) = self.piano_lines.get_mut(line) {
-            if let Some(node) = piano_line.get_bottom_node() {
-                let touch_block = &piano_line.touch_block;
-                let intersect_length =
-                    line_intersect_length(node.y, node.height, touch_block.y, touch_block.height);
-                let intersect_ratio = intersect_length
-                    / min(OrderedFloat(node.height), OrderedFloat(touch_block.height)).into_inner();
-
-                if intersect_ratio > 0.0 {
-                    piano_line.pop_bottom_node();
-                }
+        for (key, event_type) in self.keyboard_control.poll_event().collect::<Vec<_>>(){
+            match event_type {
+                KeyEventType::KeyPressed => {
+                    self.key_press(key);
+                },
+                KeyEventType::KeyReleased => {
+                    self.key_release(key);
+                },
             }
         }
     }
@@ -150,6 +118,38 @@ impl Game {
                 .choose_mut(&mut rand::thread_rng())
                 .unwrap()
                 .push_new_node(new_music_node_y);
+        }
+    }
+
+    fn key_press(&mut self, key: Key) {
+        if let Some(line) = self
+            .settings
+                .keybinds
+                .iter()
+                .position(|&keybind| keybind == key)
+        {
+            self.as_press_touch_block(line);
+        }
+    }
+
+    fn key_release(&mut self, _key: Key) { }
+
+    pub fn as_press_touch_block(&mut self, line: usize) {
+        use crate::math::line_intersect_length;
+        use std::cmp::min;
+
+        if let Some(piano_line) = self.piano_lines.get_mut(line) {
+            if let Some(node) = piano_line.get_bottom_node() {
+                let touch_block = &piano_line.touch_block;
+                let intersect_length =
+                    line_intersect_length(node.y, node.height, touch_block.y, touch_block.height);
+                let intersect_ratio = intersect_length
+                    / min(OrderedFloat(node.height), OrderedFloat(touch_block.height)).into_inner();
+
+                if intersect_ratio > 0.0 {
+                    piano_line.pop_bottom_node();
+                }
+            }
         }
     }
 }

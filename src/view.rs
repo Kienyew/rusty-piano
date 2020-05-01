@@ -13,11 +13,12 @@ impl GameView {
     }
 
     pub fn draw<G: Graphics>(&self, game: &Game, c: &Context, g: &mut G) {
+        // draw orders matter!
         self.draw_background(c, g);
         self.draw_piano_lines_background(c, g);
         self.draw_piano_lines_sidelines(c, g);
-        self.draw_touch_blocks(game, c, g);
         self.draw_music_nodes(game, c, g);
+        self.draw_touch_blocks(game, c, g);
     }
 
     fn draw_background<G: Graphics>(&self, c: &Context, g: &mut G) {
